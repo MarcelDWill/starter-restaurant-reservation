@@ -18,6 +18,12 @@ function isValidDate(date) {
 
 async function create(req, res, next) {
   const { data: { reservation_date } = {} } = req.body;
+  if (!reservation_date) {
+    return next({
+      status: 400,
+      message: "Reservation date is required.",
+    });
+  }
   if (!isValidDate(reservation_date)) {
     return next({
       status: 400,

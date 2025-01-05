@@ -4,6 +4,7 @@
  */
 import formatReservationDate from "./format-reservation-date";
 import formatReservationTime from "./format-reservation-date";
+import axios from "axios";
 
 const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || "http://localhost:5001";
@@ -66,4 +67,29 @@ export async function listReservations(params, signal) {
   return await fetchJson(url, { headers, signal }, [])
     .then(formatReservationDate)
     .then(formatReservationTime);
+}
+
+export async function deleteTable(table_id) {
+  const response = await axios.delete(`/tables/${table_id}/seat`);
+  return response.data.data;
+}
+
+export async function updateReservationStatus(reservation_id, status) {
+  const response = await axios.put(`/reservations/${reservation_id}/status`, { data: { status } });
+  return response.data.data;
+}
+
+export async function searchReservations(mobile_number) {
+  const response = await axios.get(`/reservations/search?mobile_number=${mobile_number}`);
+  return response.data.data;
+}
+
+export async function readReservation(reservation_id) {
+  const response = await axios.get(`/reservations/${reservation_id}`);
+  return response.data.data;
+}
+
+export async function updateReservation(reservation) {
+  const response = await axios.put(`/reservations/${reservation.reservation_id}/edit`, { data: reservation });
+  return response.data.data;
 }

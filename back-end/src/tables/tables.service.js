@@ -1,32 +1,42 @@
 const knex = require("../db/connection");
 
-function list() {
-  return knex("tables").select("*").orderBy("table_name");
-}
-
-function create(table) {
-  return knex("tables").insert(table).returning("*").then((rows) => rows[0]);
-}
-
-function seat(table_id, reservation_id) {
+function list(){
   return knex("tables")
-    .where({ table_id })
-    .update({ reservation_id })
-    .returning("*")
-    .then((rows) => rows[0]);
+  .select("*")
+  .orderBy("table_name");
 }
 
-function deleteTable(table_id) {
+function filteredList(){
   return knex("tables")
-    .where({ table_id })
-    .update({ reservation_id: null })
-    .returning("*")
-    .then((rows) => rows[0]);
+    .select("*")
+    .where({reservation_id: null})
+    .orderBy('table_id')
 }
 
-module.exports = {
-  list,
-  create,
-  seat,
-  deleteTable,
+function create(table){
+  return knex("tables")
+      .insert(table)
+      .returning("*")
+      .then((createdRecords)=> createdRecords[0]);
+}
+
+function read(tableId){
+  return knex("tables")
+    .select("*")
+    .where({ table_id: tableId }).first();
+}
+
+function update(updatedTable){
+  return knex("tables")     
+    .select("*")
+    .where({ table_id: updatedTable.table_id})
+    .update(updatedTable, "*")
+}
+
+module.exports = {   
+    list,
+    filteredList,
+    create,
+    read,
+    update,
 };

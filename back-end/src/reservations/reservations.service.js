@@ -1,28 +1,43 @@
 const knex = require("../db/connection");
 
-function list(date) {
+function list(){
+    return knex("reservations").select("*");
+}
+
+function filteredList(date){
   return knex("reservations")
     .select("*")
-    .where({ reservation_date: date })
-    .orderBy("reservation_time");
+    .whereNot('status', 'finished')
+    .andWhereNot('status', 'cancelled')
+    .andWhere({reservation_date: date})
+    .orderBy('reservation_time')
 }
 
-function create(reservation) {
+function create(reservation){
   return knex("reservations")
-    .insert(reservation)
-    .returning("*")
-    .then((createdRecords) => createdRecords[0]);
+      .insert(reservation)
+      .returning("*")
+      .then((createdRecords)=> createdRecords[0]);
 }
 
-function updateStatus(reservation_id, status) {
-  return knex("reservations")
-    .where({ reservation_id })
-    .update({ status })
-    .returning("*")
-    .then((rows) => rows[0]);
+function read(reservationId) {
+    return knex("reservations")
+    .select("*")
+    .where({ reservation_id: reservationId }).first();
 }
 
-function search(mobile_number) {
+function update(updatedReservation){
+
+    return knex("reservations")     
+      .select("*")
+      .where({ reservation_id: updatedReservation.reservation_id})
+      .update(updatedReservation, "*")
+}
+
+function destroy(reservation_id) {
+    return knex("reservations").where({ reservation_id }).del(); 
+}
+function search(mobile_number) { 
   return knex("reservations")
     .whereRaw(
       "translate(mobile_number, '() -', '') like ?",
@@ -31,18 +46,12 @@ function search(mobile_number) {
     .orderBy("reservation_date");
 }
 
-function update(reservation_id, updatedReservation) {
-  return knex("reservations")
-    .where({ reservation_id })
-    .update(updatedReservation)
-    .returning("*")
-    .then((rows) => rows[0]);
-}
-
-module.exports = {
-  list,
-  create,
-  updateStatus,
-  search,
-  update,
-};
+  module.exports = {
+    list,
+    filteredList,
+    create,
+    read,
+    update,
+    delete: destroy,
+    search,
+  };

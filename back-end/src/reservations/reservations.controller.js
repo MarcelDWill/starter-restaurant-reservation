@@ -2,7 +2,6 @@
 const resService = require("./reservations.service");
 const asyncErrorBoundary = require("../errors/asyncErrorBoundary");
 const hasProperties = require("../errors/hasProperties");
-const resValidate = require("../errors/resValidate");
 
 //constants
 const VALID_PROPERTIES = [
@@ -17,6 +16,10 @@ const VALID_PROPERTIES = [
   "created_at",
   "updated_at",
 ];
+
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const timeRegex = /^([01]\d|2[0-3]):?([0-5]\d)$/;
+
 const hasStatusProperty = hasProperties("status");
 
 const hasRequiredProperties = hasProperties(
@@ -25,16 +28,17 @@ const hasRequiredProperties = hasProperties(
   "mobile_number", 
   "reservation_date", 
   "reservation_time", 
-  "people",);
-  
-const VALID_STATUS = [
-    "booked",
-    "seated",
-    "finished",
-    "cancelled"
-]
-//functions
+  "people"
+);
 
+const VALID_STATUS = [
+  "booked",
+  "seated",
+  "finished",
+  "cancelled"
+];
+
+//functions
 
 async function list(req, res) {
   const {date, mobile_number} = req.query;
@@ -128,15 +132,69 @@ function addBookedStatus(req, res, next){
   }}
   next();
 }
+
+function validateReservationDate(req, res, next) {
+  const reservationDate = new Date(`${req.body.data.reservation_date}T${req.body.data.reservation_time}`);
+  if (reservationDate < new Date()) return res.status(400).send({ error: 'reservation_date should be in the future' });
+  const theDate = new Date(req.body.data.reservation_date).getUTCDay();
+  if (theDate === 2) return res.status(400).send({ error: 'Business is closed on Tuesdays' });
+  if (!dateRegex.test(req.body.data.reservation_date)) return res.status(400).send({ error: 'reservation_date should be in correct format' });
+  next();
+}
+
+function validateReservationTime(req, res, next) {
+  const resTime = req.body.data.reservation_time;
+  if (timeRegex.test(resTime)) {
+    const timeArray = resTime.split(":");
+    const timeNumber = Number(timeArray.join(''));
+    if (timeNumber >= 1030 && timeNumber <= 2130) return next();
+    return res.status(400).send({ error: 'reservation_time should be between 10:30am and 9:30pm' });
+  }
+  return res.status(400).send({ error: 'reservation_time should be in correct format' });
+}
+
+function validatePeople(req, res, next) {
+  if (typeof req.body.data.people !== 'number') {
+    return next({ status: 400, message: 'people field must be a number' });
+  }
+  next();
+}
+
+function validateStatus(req, res, next) {
+  if (req.body.data.status !== "booked") {
+    return next({ status: 400, message: `${req.body.data.status} is not a valid POST status` });
+  }
+  next();
+}
+
 module.exports = {
   list: asyncErrorBoundary(list),
   read: [asyncErrorBoundary(resExists), read],
-  create: [hasOnlyValidProperties, hasRequiredProperties,  addBookedStatus,resValidate("reservation_date"),
-    resValidate("reservation_time"),
-    resValidate("people"), resValidate("status"),create],
-  update: [asyncErrorBoundary(resExists), hasOnlyValidProperties,  hasRequiredProperties,  resValidate("reservation_date"),
-    resValidate("reservation_time"),
-    resValidate("people"), hasValidStatus, update],
-  updateStatus: [asyncErrorBoundary(resExists), hasStatusProperty, hasValidStatus, update],
+  create: [
+    hasOnlyValidProperties,
+    hasRequiredProperties,
+    addBookedStatus,
+    validateReservationDate,
+    validateReservationTime,
+    validatePeople,
+    validateStatus,
+    create
+  ],
+  update: [
+    asyncErrorBoundary(resExists),
+    hasOnlyValidProperties,
+    hasRequiredProperties,
+    validateReservationDate,
+    validateReservationTime,
+    validatePeople,
+    hasValidStatus,
+    update
+  ],
+  updateStatus: [
+    asyncErrorBoundary(resExists),
+    hasStatusProperty,
+    hasValidStatus,
+    update
+  ],
   delete: [asyncErrorBoundary(resExists), destroy],
 };
